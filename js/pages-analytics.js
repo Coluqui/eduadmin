@@ -221,8 +221,11 @@ function renderAnalyticsDetailPage(analyticId) {
 
       <div class="card">
         <div class="card-header">
-          <span class="card-title"><i data-lucide="paperclip" style="display:inline;vertical-align:middle;margin-right:8px;width:17px;height:17px"></i>Documentación adjunta</span>
-          ${canEdit ? `<button class="btn btn-secondary btn-sm"><i data-lucide="upload"></i> Adjuntar</button>` : ''}
+          ${canEdit ? `<span class="card-title"><i data-lucide="paperclip" style="display:inline;vertical-align:middle;margin-right:8px;width:17px;height:17px"></i>Documentación adjunta</span>
+          <button class="btn btn-secondary btn-sm" onclick="openDocumentUpload('${analyticId}')">
+            <i data-lucide="upload"></i> Adjuntar
+            <input type="file" id="detail-upload-input-${analyticId}" multiple accept=".pdf,.png,.jpg,.jpeg" style="display:none" onchange="handleDetailFileSelect(event,'${analyticId}')">
+          </button>` : '<span class="card-title"><i data-lucide="paperclip" style="display:inline;vertical-align:middle;margin-right:8px;width:17px;height:17px"></i>Documentación adjunta</span>'}
         </div>
         <div class="card-body" style="padding:12px 24px">${docsList}</div>
       </div>

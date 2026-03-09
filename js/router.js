@@ -126,6 +126,7 @@ async function handleLoginSubmit(e) {
     try {
         const result = await Auth.login(email, password);
         if (result.success) {
+            await DataLoader.loadAll();
             showToast('success', '¡Bienvenido/a!', result.user.full_name);
             window.location.hash = '#dashboard';
             Router.render();
@@ -261,25 +262,37 @@ function saveAnalyticDraft(analyticId) {
     showToast('success', 'Borrador guardado', 'Los cambios se guardaron correctamente.');
 }
 
-function submitAnalyticForReview(analyticId) {
-    const result = AnalyticRepository.changeStatus(analyticId, STATUS.EN_REVISION);
-    if (result.success) {
+async function submitAnalyticForReview(analyticId) {
+    try {
+        const sbResult = await SupabaseWriter.changeAnalyticStatus(analyticId, STATUS.EN_REVISION);
+        if (!sbResult) {
+            // mock fallback
+            AnalyticRepository.changeStatus(analyticId, STATUS.EN_REVISION);
+        } else {
+            await DataLoader.reloadAnalytics();
+            await DataLoader.reloadHistory();
+        }
         showToast('success', 'Enviado a revisión', 'La Directora será notificada.');
         setTimeout(() => Router.render(), 600);
-    } else {
-        showToast('error', 'Error', result.error);
+    } catch (err) {
+        console.error(err);
+        showToast('error', 'Error', err.message || 'No se pudo cambiar el estado.');
     }
 }
 
-function approveAnalytic(analyticId) {
-    const result = AnalyticRepository.changeStatus(analyticId, STATUS.APROBADO);
-    if (result.success) {
+async function approveAnalytic(analyticId) {
+    try {
+        const sbResult = await SupabaseWriter.changeAnalyticStatus(analyticId, STATUS.APROBADO);
+        if (!sbResult) AnalyticRepository.changeStatus(analyticId, STATUS.APROBADO);
+        else { await DataLoader.reloadAnalytics(); await DataLoader.reloadHistory(); }
         showToast('success', 'Analítico aprobado', 'La secretaria puede enviarlo a SInIDE.');
         setTimeout(() => Router.render(), 600);
+    } catch (err) {
+        showToast('error', 'Error', err.message || 'No se pudo aprobar.');
     }
 }
 
-function confirmReturn(analyticId) {
+async function confirmReturn(analyticId) {
     const obs = document.getElementById('return-observation');
     const err = document.getElementById('return-obs-error');
     if (!obs || !obs.value.trim()) {
@@ -287,19 +300,28 @@ function confirmReturn(analyticId) {
         if (typeof lucide !== 'undefined') lucide.createIcons({ el: err });
         return;
     }
-    const result = AnalyticRepository.changeStatus(analyticId, STATUS.DEVUELTO, obs.value.trim());
-    if (result.success) {
+    const observation = obs.value.trim();
+    try {
+        const sbResult = await SupabaseWriter.changeAnalyticStatus(analyticId, STATUS.DEVUELTO, observation);
+        if (!sbResult) AnalyticRepository.changeStatus(analyticId, STATUS.DEVUELTO, observation);
+        else { await DataLoader.reloadAnalytics(); await DataLoader.reloadHistory(); }
         closeModal();
         showToast('warning', 'Analítico devuelto', 'La secretaria fue notificada con la observación.');
         setTimeout(() => Router.render(), 600);
+    } catch (err) {
+        showToast('error', 'Error', err.message || 'No se pudo devolver.');
     }
 }
 
-function sendAnalyticToSinide(analyticId) {
-    const result = AnalyticRepository.changeStatus(analyticId, STATUS.ENVIADO);
-    if (result.success) {
+async function sendAnalyticToSinide(analyticId) {
+    try {
+        const sbResult = await SupabaseWriter.changeAnalyticStatus(analyticId, STATUS.ENVIADO);
+        if (!sbResult) AnalyticRepository.changeStatus(analyticId, STATUS.ENVIADO);
+        else { await DataLoader.reloadAnalytics(); await DataLoader.reloadHistory(); }
         showToast('success', '¡Enviado!', 'El analítico fue marcado como enviado a SInIDE/ReFE.');
         setTimeout(() => Router.render(), 600);
+    } catch (err) {
+        showToast('error', 'Error', err.message || 'No se pudo enviar.');
     }
 }
 
@@ -477,6 +499,9 @@ function handleFileSelect(e) {
     }
 }
 
+// _wizardFiles almacena objetos File reales para subir a Storage al crear el analítico
+let _wizardFiles = [];
+
 function processFiles(files) {
     let added = 0;
     for (let i = 0; i < files.length; i++) {
@@ -485,36 +510,68 @@ function processFiles(files) {
             showToast('warning', 'Archivo muy grande', `${file.name} supera los 5MB.`);
             continue;
         }
+        const allowed = ['application/pdf', 'image/jpeg', 'image/png', 'image/jpg'];
+        if (!allowed.includes(file.type)) {
+            showToast('warning', 'Tipo no permitido', `${file.name}: solo PDF, JPG o PNG.`);
+            continue;
+        }
         _wizardData.documents.push(file.name);
+        _wizardFiles.push(file);  // guardar File real para upload posterior
         added++;
     }
-
     if (added > 0) {
-        showToast('success', 'Archivos adjuntados', `Se agregaron ${added} archivo(s).`);
+        showToast('success', 'Archivos seleccionados', `${added} archivo(s) listos para adjuntar.`);
         goToWizardStep(6);
     }
 }
 
 function removeDoc(idx) {
     _wizardData.documents.splice(idx, 1);
+    _wizardFiles.splice(idx, 1);
     goToWizardStep(6);
 }
 
-function submitNewAnalytic() {
+async function submitNewAnalytic() {
     if (!_wizardData.student) {
         showToast('error', 'Error', 'No se seleccionó ningún alumno.');
         return;
     }
-    const result = AnalyticRepository.createAnalytic({
+
+    const analyticData = {
         student_id: _wizardData.student.id,
         grades: _wizardData.grades,
         pending_subjects: _wizardData.pending_subjects,
         equivalencies: _wizardData.equivalencies,
         documents: _wizardData.documents
-    });
-    if (result.success) {
-        showToast('success', 'Analítico creado', 'El borrador fue guardado correctamente.');
-        setTimeout(() => Router.navigate('analiticos/' + result.analytic.id), 700);
+    };
+
+    try {
+        const created = await SupabaseWriter.createAnalytic(analyticData);
+        if (created) {
+            // Upload real files to Storage after analytic creation
+            for (const file of _wizardFiles) {
+                try {
+                    await SupabaseWriter.uploadDocument(created.id, file);
+                } catch (uploadErr) {
+                    console.error('Error uploading file', file.name, uploadErr);
+                    showToast('warning', 'Archivo no subido', `${file.name} no pudo subirse al servidor.`);
+                }
+            }
+            await DataLoader.reloadAnalytics();
+            _wizardFiles = [];
+            showToast('success', 'Analítico creado', 'El borrador fue guardado correctamente.');
+            setTimeout(() => Router.navigate('analiticos/' + created.id), 700);
+        } else {
+            // Mock fallback
+            const result = AnalyticRepository.createAnalytic(analyticData);
+            if (result.success) {
+                showToast('success', 'Analítico creado', 'El borrador fue guardado correctamente.');
+                setTimeout(() => Router.navigate('analiticos/' + result.analytic.id), 700);
+            }
+        }
+    } catch (err) {
+        console.error('submitNewAnalytic error:', err);
+        showToast('error', 'Error al crear analítico', err.message || 'Intentá de nuevo.');
     }
 }
 
@@ -569,18 +626,22 @@ function filterStudentsList(query) {
 // USER MANAGEMENT HANDLERS
 // ============================================================
 
-function toggleUserActive(userId) {
-    const result = UserRepository.toggleActive(userId);
-    if (result.success) {
-        const msg = result.is_active ? 'Usuario activado' : 'Usuario desactivado';
+async function toggleUserActive(userId) {
+    const user = UserRepository.getById(userId);
+    if (!user) return;
+    try {
+        const sbResult = await SupabaseWriter.toggleUserActive(userId, user.is_active);
+        if (!sbResult) UserRepository.toggleActive(userId);
+        else await DataLoader.reloadUsers();
+        const msg = (user.is_active ? 'Usuario desactivado' : 'Usuario activado');
         showToast('success', msg);
         setTimeout(() => Router.render(), 400);
-    } else {
-        showToast('error', 'Error', result.error || 'No se pudo cambiar el estado.');
+    } catch (err) {
+        showToast('error', 'Error', err.message || 'No se pudo cambiar el estado.');
     }
 }
 
-function createUser() {
+async function createUser() {
     const name = document.getElementById('new-user-name')?.value.trim();
     const email = document.getElementById('new-user-email')?.value.trim();
     const role = document.getElementById('new-user-role')?.value;
@@ -594,14 +655,75 @@ function createUser() {
         return;
     }
 
-    const result = UserRepository.create({ full_name: name, email, role });
-    if (result.success) {
+    try {
+        const sbResult = await SupabaseWriter.createUserProfile({ full_name: name, email, role });
+        if (!sbResult) {
+            const result = UserRepository.create({ full_name: name, email, role });
+            if (!result.success) throw new Error(result.error);
+        } else {
+            await DataLoader.reloadUsers();
+        }
         closeModal();
         showToast('success', 'Usuario creado', 'Se enviaron las credenciales temporales al email.');
         setTimeout(() => Router.render(), 400);
-    } else {
-        if (errMsg) errMsg.textContent = result.error;
+    } catch (err) {
+        if (errMsg) errMsg.textContent = err.message || 'Error al crear el usuario.';
         if (errEl) errEl.classList.remove('hidden');
         if (typeof lucide !== 'undefined') lucide.createIcons({ el: errEl });
     }
 }
+
+// ============================================================
+// DOCUMENT UPLOAD — ANALYTIC DETAIL PAGE
+// ============================================================
+
+function openDocumentUpload(analyticId) {
+    const input = document.getElementById('detail-upload-input-' + analyticId);
+    if (input) input.click();
+}
+
+async function handleDetailFileSelect(event, analyticId) {
+    const files = event.target.files;
+    if (!files || !files.length) return;
+
+    let uploaded = 0;
+    let errors = 0;
+
+    for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        if (file.size > 5 * 1024 * 1024) {
+            showToast('warning', 'Archivo muy grande', `${file.name} supera los 5MB.`);
+            errors++;
+            continue;
+        }
+        try {
+            const result = await SupabaseWriter.uploadDocument(analyticId, file);
+            if (!result) {
+                // mock fallback: add filename to local analytic
+                const analytic = AnalyticRepository.getById(analyticId);
+                if (analytic) {
+                    if (!Array.isArray(analytic.documents)) analytic.documents = [];
+                    analytic.documents.push(file.name);
+                }
+            }
+            uploaded++;
+        } catch (err) {
+            console.error('Upload error:', err);
+            showToast('error', 'Error al subir', `${file.name}: ${err.message}`);
+            errors++;
+        }
+    }
+
+    if (uploaded > 0) {
+        await DataLoader.reloadAnalytics();
+        showToast('success', 'Documentos adjuntados', `${uploaded} archivo(s) subidos.`);
+        // Re-render content area with fresh data
+        const { params } = Router.parseHash();
+        const main = document.querySelector('.main-content');
+        if (main && params[0]) {
+            main.innerHTML = renderAnalyticsDetailPage(params[0]);
+            if (window.lucide) window.lucide.createIcons({ el: main });
+        }
+    }
+}
+

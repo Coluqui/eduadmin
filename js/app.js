@@ -11,8 +11,11 @@
     document.documentElement.setAttribute('data-theme', savedTheme);
     AppState.set('theme', savedTheme);
 
-    // 2. Restore session from Supabase
-    Auth.restoreSession().then(() => {
+    // 2. Restore session from Supabase, then load live data before first render
+    Auth.restoreSession().then(async () => {
+        if (Auth.isAuthenticated()) {
+            await DataLoader.loadAll();
+        }
         Router.render();
     });
 

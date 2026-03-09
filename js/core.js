@@ -306,20 +306,22 @@ const Auth = {
 
             const user = data.user;
 
-            // Consultar la tabla profiles para obtener metadata adicional (rol, full_name)
+            // Consultar la tabla profiles para obtener metadata adicional (rol, full_name, institution_id)
             let userRole = ROLES.ATENCION;
             let userFullName = user.user_metadata?.full_name || user.email.split('@')[0];
+            let userInstitutionId = null;
 
             try {
                 const { data: profileData, error: profileError } = await supabaseClient
                     .from('profiles')
-                    .select('role, full_name')
+                    .select('role, full_name, institution_id')
                     .eq('id', user.id)
                     .single();
 
                 if (!profileError && profileData) {
                     if (profileData.role) userRole = profileData.role;
                     if (profileData.full_name) userFullName = profileData.full_name;
+                    if (profileData.institution_id) userInstitutionId = profileData.institution_id;
                 }
             } catch (err) {
                 console.error('Error fetching profile in login:', err);
@@ -330,6 +332,7 @@ const Auth = {
                 email: user.email,
                 full_name: userFullName,
                 role: userRole,
+                institution_id: userInstitutionId,
                 is_active: true
             };
 
@@ -361,20 +364,22 @@ const Auth = {
         if (session) {
             const user = session.user;
 
-            // Consultar la tabla profiles para obtener metadata adicional (rol, full_name)
+            // Consultar la tabla profiles para obtener metadata adicional (rol, full_name, institution_id)
             let userRole = ROLES.ATENCION;
             let userFullName = user.user_metadata?.full_name || user.email.split('@')[0];
+            let userInstitutionId = null;
 
             try {
                 const { data: profileData, error: profileError } = await supabaseClient
                     .from('profiles')
-                    .select('role, full_name')
+                    .select('role, full_name, institution_id')
                     .eq('id', user.id)
                     .single();
 
                 if (!profileError && profileData) {
                     if (profileData.role) userRole = profileData.role;
                     if (profileData.full_name) userFullName = profileData.full_name;
+                    if (profileData.institution_id) userInstitutionId = profileData.institution_id;
                 }
             } catch (err) {
                 console.error('Error fetching profile in restoreSession:', err);
@@ -385,6 +390,7 @@ const Auth = {
                 email: user.email,
                 full_name: userFullName,
                 role: userRole,
+                institution_id: userInstitutionId,
                 is_active: true
             };
             AppState.set('currentUser', safeUser);
@@ -659,3 +665,256 @@ function canTransitionAnalytic(currentStatus, newStatus, userRole) {
     const roles = TRANSITION_ROLES[key] || [];
     return roles.includes(userRole);
 }
+
+// ============================================================
+// DATA LOADER — Supabase reads with institution isolation
+// ============================================================
+// Patron Render-then-Refresh:
+// 1. La app renderiza inmediatamente con MOCK_DB (o caché previo)
+// 2. DataLoader.loadAll() obtiene datos frescos de Supabase y actualiza MOCK_DB
+// 3. El router re-renderiza el contenido con datos actualizados
+// ============================================================
+
+const DataLoader = {
+    _getInstitutionId() {
+        return Auth.getCurrentUser()?.institution_id || null;
+    },
+
+    _applyInstitutionFilter(query, instId) {
+        if (instId) return query.eq('institution_id', instId);
+        return query;
+    },
+
+    /** Carga todos los datos de la institución actual desde Supabase */
+    async loadAll() {
+        if (!supabaseClient) return false; // usar mock
+
+        const instId = this._getInstitutionId();
+
+        try {
+            let analyticsQ = supabaseClient.from('analytics').select('*');
+            let studentsQ = supabaseClient.from('students').select('*');
+            let usersQ = supabaseClient.from('profiles').select('*');
+            let historyQ = supabaseClient.from('analytic_history').select('*').order('created_at', { ascending: false });
+
+            analyticsQ = this._applyInstitutionFilter(analyticsQ, instId);
+            studentsQ = this._applyInstitutionFilter(studentsQ, instId);
+            usersQ = this._applyInstitutionFilter(usersQ, instId);
+
+            const [analyticsRes, studentsRes, usersRes, historyRes] = await Promise.all([
+                analyticsQ, studentsQ, usersQ, historyQ
+            ]);
+
+            if (!analyticsRes.error && analyticsRes.data) {
+                MOCK_DB.analytics = analyticsRes.data.map(a => ({
+                    ...a,
+                    grades: a.grades || {},
+                    pending_subjects: a.pending_subjects || [],
+                    equivalencies: a.equivalencies || [],
+                    documents: a.documents || []
+                }));
+            }
+            if (!studentsRes.error && studentsRes.data) {
+                MOCK_DB.students = studentsRes.data;
+            }
+            if (!usersRes.error && usersRes.data) {
+                MOCK_DB.users = usersRes.data.map(p => ({
+                    id: p.id,
+                    full_name: p.full_name,
+                    email: p.email,
+                    role: p.role,
+                    is_active: p.is_active,
+                    created_at: p.created_at
+                }));
+            }
+            if (!historyRes.error && historyRes.data) {
+                MOCK_DB.history = historyRes.data;
+            }
+            return true;
+        } catch (err) {
+            console.error('DataLoader.loadAll error:', err);
+            return false;
+        }
+    },
+
+    async reloadAnalytics() {
+        if (!supabaseClient) return;
+        const instId = this._getInstitutionId();
+        let q = supabaseClient.from('analytics').select('*');
+        q = this._applyInstitutionFilter(q, instId);
+        const { data, error } = await q;
+        if (!error && data) {
+            MOCK_DB.analytics = data.map(a => ({
+                ...a,
+                grades: a.grades || {},
+                pending_subjects: a.pending_subjects || [],
+                equivalencies: a.equivalencies || [],
+                documents: a.documents || []
+            }));
+        }
+    },
+
+    async reloadHistory() {
+        if (!supabaseClient) return;
+        const { data, error } = await supabaseClient
+            .from('analytic_history')
+            .select('*')
+            .order('created_at', { ascending: false });
+        if (!error && data) MOCK_DB.history = data;
+    },
+
+    async reloadUsers() {
+        if (!supabaseClient) return;
+        const instId = this._getInstitutionId();
+        let q = supabaseClient.from('profiles').select('*');
+        q = this._applyInstitutionFilter(q, instId);
+        const { data, error } = await q;
+        if (!error && data) {
+            MOCK_DB.users = data.map(p => ({
+                id: p.id,
+                full_name: p.full_name,
+                email: p.email,
+                role: p.role,
+                is_active: p.is_active,
+                created_at: p.created_at
+            }));
+        }
+    }
+};
+
+// ============================================================
+// SUPABASE WRITER — mutations que persisten en Supabase
+// ============================================================
+
+const SupabaseWriter = {
+
+    async createAnalytic(data) {
+        if (!supabaseClient) return null; // usar mock
+
+        const user = Auth.getCurrentUser();
+        const payload = {
+            student_id: data.student_id,
+            status: STATUS.BORRADOR,
+            created_by: user.id,
+            grades: data.grades || {},
+            pending_subjects: data.pending_subjects || [],
+            equivalencies: data.equivalencies || [],
+            documents: data.documents || [],
+            institution_id: user.institution_id || null
+        };
+
+        const { data: created, error } = await supabaseClient
+            .from('analytics').insert(payload).select().single();
+        if (error) throw error;
+
+        await supabaseClient.from('analytic_history').insert({
+            analytic_id: created.id,
+            user_id: user.id,
+            action: 'Analítico creado',
+            previous_status: null,
+            new_status: STATUS.BORRADOR,
+            observation: null
+        });
+
+        return created;
+    },
+
+    async changeAnalyticStatus(analyticId, newStatus, observation) {
+        if (!supabaseClient) return null;
+
+        const user = Auth.getCurrentUser();
+        const ACTION_LABELS = {
+            [STATUS.EN_REVISION]: 'Enviado a revisión',
+            [STATUS.APROBADO]: 'Analítico aprobado',
+            [STATUS.DEVUELTO]: 'Devuelto con observación',
+            [STATUS.ENVIADO]: 'Enviado a SInIDE/ReFE'
+        };
+
+        const { data: prev, error: fetchErr } = await supabaseClient
+            .from('analytics').select('status').eq('id', analyticId).single();
+        if (fetchErr) throw fetchErr;
+
+        const { error: updateErr } = await supabaseClient
+            .from('analytics')
+            .update({ status: newStatus, updated_at: new Date().toISOString() })
+            .eq('id', analyticId);
+        if (updateErr) throw updateErr;
+
+        await supabaseClient.from('analytic_history').insert({
+            analytic_id: analyticId,
+            user_id: user.id,
+            action: ACTION_LABELS[newStatus] || 'Estado actualizado',
+            previous_status: prev.status,
+            new_status: newStatus,
+            observation: observation || null
+        });
+
+        return { success: true };
+    },
+
+    async createUserProfile(data) {
+        if (!supabaseClient) return null;
+
+        const currentUser = Auth.getCurrentUser();
+
+        // Crear usuario auth con contraseña temporal
+        const tempPassword = 'Temp' + Math.random().toString(36).slice(-8) + '!1';
+        const { data: authData, error: authErr } = await supabaseClient.auth.signUp({
+            email: data.email,
+            password: tempPassword,
+            options: { data: { full_name: data.full_name } }
+        });
+        if (authErr) throw authErr;
+
+        // Crear/actualizar perfil
+        const { error: profileErr } = await supabaseClient.from('profiles').upsert({
+            id: authData.user.id,
+            full_name: data.full_name,
+            email: data.email,
+            role: data.role,
+            is_active: true,
+            institution_id: currentUser.institution_id || null
+        });
+        if (profileErr) throw profileErr;
+
+        return { success: true };
+    },
+
+    async toggleUserActive(userId, currentIsActive) {
+        if (!supabaseClient) return null;
+        const { error } = await supabaseClient
+            .from('profiles')
+            .update({ is_active: !currentIsActive })
+            .eq('id', userId);
+        if (error) throw error;
+        return { success: true, is_active: !currentIsActive };
+    },
+
+    async uploadDocument(analyticId, file) {
+        if (!supabaseClient) return null;
+
+        const user = Auth.getCurrentUser();
+        const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+        const path = `${user.institution_id || 'default'}/${analyticId}/${Date.now()}_${safeName}`;
+
+        const { error: uploadErr } = await supabaseClient.storage
+            .from('documentos')
+            .upload(path, file, { upsert: false });
+        if (uploadErr) throw uploadErr;
+
+        const { data: urlData } = supabaseClient.storage.from('documentos').getPublicUrl(path);
+
+        // Agregar URL al array de documentos del analítico
+        const { data: analytic } = await supabaseClient
+            .from('analytics').select('documents').eq('id', analyticId).single();
+        const docs = Array.isArray(analytic?.documents) ? analytic.documents : [];
+        docs.push({ name: file.name, url: urlData.publicUrl, path });
+
+        await supabaseClient.from('analytics')
+            .update({ documents: docs, updated_at: new Date().toISOString() })
+            .eq('id', analyticId);
+
+        return { success: true, name: file.name, url: urlData.publicUrl };
+    }
+};
+
