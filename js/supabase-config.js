@@ -14,7 +14,7 @@ const SUPABASE_URL = (window.ENV && window.ENV.SUPABASE_URL && window.ENV.SUPABA
     : 'https://apswmoescwxoleaprbuk.supabase.co';
 const SUPABASE_ACCESS_TOKEN = (window.ENV && window.ENV.SUPABASE_ANON_KEY && window.ENV.SUPABASE_ANON_KEY !== '%VITE_SUPABASE_ANON_KEY%')
     ? window.ENV.SUPABASE_ANON_KEY
-    : 'TU_ACCES_TOKEN_AQUI';
+    : 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFwc3dtb2VzY3d4b2xlYXByYnVrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI3OTc2MDQsImV4cCI6MjA4ODM3MzYwNH0.Ai4OnVJaFKtrkUKgd0v4Yqox6wlBjHFMS5WJPIMtvyw';
 
 // Inicialización del cliente
 let supabaseClient = null;
