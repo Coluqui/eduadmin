@@ -293,12 +293,31 @@ const Auth = {
             }
 
             const user = data.user;
-            // Extraer metadatos (asumiendo que guardamos 'full_name' y 'role' allí)
+
+            // Consultar la tabla profiles para obtener metadata adicional (rol, full_name)
+            let userRole = ROLES.ATENCION;
+            let userFullName = user.user_metadata?.full_name || user.email.split('@')[0];
+
+            try {
+                const { data: profileData, error: profileError } = await supabaseClient
+                    .from('profiles')
+                    .select('role, full_name')
+                    .eq('id', user.id)
+                    .single();
+
+                if (!profileError && profileData) {
+                    if (profileData.role) userRole = profileData.role;
+                    if (profileData.full_name) userFullName = profileData.full_name;
+                }
+            } catch (err) {
+                console.error('Error fetching profile in login:', err);
+            }
+
             const safeUser = {
                 id: user.id,
                 email: user.email,
-                full_name: user.user_metadata?.full_name || user.email.split('@')[0],
-                role: user.user_metadata?.role || ROLES.ATENCION,
+                full_name: userFullName,
+                role: userRole,
                 is_active: true
             };
 
@@ -329,11 +348,31 @@ const Auth = {
         const { data: { session } } = await supabaseClient.auth.getSession();
         if (session) {
             const user = session.user;
+
+            // Consultar la tabla profiles para obtener metadata adicional (rol, full_name)
+            let userRole = ROLES.ATENCION;
+            let userFullName = user.user_metadata?.full_name || user.email.split('@')[0];
+
+            try {
+                const { data: profileData, error: profileError } = await supabaseClient
+                    .from('profiles')
+                    .select('role, full_name')
+                    .eq('id', user.id)
+                    .single();
+
+                if (!profileError && profileData) {
+                    if (profileData.role) userRole = profileData.role;
+                    if (profileData.full_name) userFullName = profileData.full_name;
+                }
+            } catch (err) {
+                console.error('Error fetching profile in restoreSession:', err);
+            }
+
             const safeUser = {
                 id: user.id,
                 email: user.email,
-                full_name: user.user_metadata?.full_name || user.email.split('@')[0],
-                role: user.user_metadata?.role || ROLES.ATENCION,
+                full_name: userFullName,
+                role: userRole,
                 is_active: true
             };
             AppState.set('currentUser', safeUser);
