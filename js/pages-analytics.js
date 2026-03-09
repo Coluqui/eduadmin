@@ -499,11 +499,16 @@ function getWizardStep6() {
     <div style="max-width:600px">
       <h3 style="font-size:17px;font-weight:700;margin-bottom:4px">Documentación adjunta</h3>
       <p style="color:var(--text-secondary);font-size:13px;margin-bottom:24px">Adjuntá los documentos requeridos: legajo de identidad, constancia de egreso, actas de examen.</p>
-      <div class="card" style="border:2px dashed var(--border);background:var(--bg-surface-2);text-align:center;padding:40px 24px;cursor:pointer;transition:all var(--t-fast)" onclick="simulateFileUpload()">
-        <i data-lucide="upload-cloud" style="width:36px;height:36px;color:var(--text-muted);margin:0 auto 12px"></i>
-        <div style="font-weight:600;font-size:14px;color:var(--text-primary)">Arrastrá archivos o hacé clic</div>
-        <div style="font-size:12px;color:var(--text-muted);margin-top:4px">PDF, JPG o PNG · Máx. 5MB por archivo</div>
-        <button class="btn btn-secondary btn-sm" style="margin:12px auto 0">Seleccionar archivos</button>
+      <div id="dropzone" class="card" style="border:2px dashed var(--border);background:var(--bg-surface-2);text-align:center;padding:40px 24px;cursor:pointer;transition:all var(--t-fast)" 
+           onclick="document.getElementById('file-upload-input').click()"
+           ondragover="handleDragOver(event)"
+           ondragleave="handleDragLeave(event)"
+           ondrop="handleDrop(event)">
+        <i data-lucide="upload-cloud" style="width:36px;height:36px;color:var(--text-muted);margin:0 auto 12px;pointer-events:none"></i>
+        <div style="font-weight:600;font-size:14px;color:var(--text-primary);pointer-events:none">Arrastrá archivos o hacé clic</div>
+        <div style="font-size:12px;color:var(--text-muted);margin-top:4px;pointer-events:none">PDF, JPG o PNG · Máx. 5MB por archivo</div>
+        <button class="btn btn-secondary btn-sm" style="margin:12px auto 0;pointer-events:none">Seleccionar archivos</button>
+        <input type="file" id="file-upload-input" multiple accept=".pdf,.png,.jpg,.jpeg" style="display:none" onchange="handleFileSelect(event)">
       </div>
       <div id="uploaded-files" style="margin-top:16px">
         ${_wizardData.documents.map((doc, idx) => `

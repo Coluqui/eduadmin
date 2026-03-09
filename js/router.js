@@ -446,20 +446,53 @@ function updateEquivalency(input) {
     }
 }
 
-function simulateFileUpload() {
-    const fakeFile = 'documento_' + Date.now() + '.pdf';
-    _wizardData.documents.push(fakeFile);
-    const container = document.getElementById('uploaded-files');
-    if (!container) return;
-    const div = document.createElement('div');
-    div.className = 'flex items-center gap-3';
-    div.style.cssText = 'padding:10px;background:var(--bg-surface-2);border:1px solid var(--border);border-radius:var(--r-md);margin-bottom:8px';
-    div.innerHTML = `<i data-lucide="file" style="color:var(--color-blue);width:18px;height:18px;flex-shrink:0"></i>
-    <span style="flex:1;font-size:13px">${escapeHtml(fakeFile)}</span>
-    <button class="icon-btn danger" onclick="this.closest('div').remove()"><i data-lucide="x"></i></button>`;
-    container.appendChild(div);
-    if (typeof lucide !== 'undefined') lucide.createIcons({ el: div });
-    showToast('success', 'Archivo adjuntado', fakeFile);
+function handleDragOver(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    const dropzone = document.getElementById('dropzone');
+    if (dropzone) dropzone.style.borderColor = 'var(--color-blue)';
+}
+
+function handleDragLeave(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    const dropzone = document.getElementById('dropzone');
+    if (dropzone) dropzone.style.borderColor = 'var(--border)';
+}
+
+function handleDrop(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    const dropzone = document.getElementById('dropzone');
+    if (dropzone) dropzone.style.borderColor = 'var(--border)';
+
+    if (e.dataTransfer && e.dataTransfer.files) {
+        processFiles(e.dataTransfer.files);
+    }
+}
+
+function handleFileSelect(e) {
+    if (e.target && e.target.files) {
+        processFiles(e.target.files);
+    }
+}
+
+function processFiles(files) {
+    let added = 0;
+    for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        if (file.size > 5 * 1024 * 1024) {
+            showToast('warning', 'Archivo muy grande', `${file.name} supera los 5MB.`);
+            continue;
+        }
+        _wizardData.documents.push(file.name);
+        added++;
+    }
+
+    if (added > 0) {
+        showToast('success', 'Archivos adjuntados', `Se agregaron ${added} archivo(s).`);
+        goToWizardStep(6);
+    }
 }
 
 function removeDoc(idx) {
