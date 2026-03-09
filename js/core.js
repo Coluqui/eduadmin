@@ -167,8 +167,13 @@ const MOCK_DB = {
                 '2023': { matematica: null, lengua: 8, historia: 8, fisica: 7, quimica: 8, ingles: 9, ed_fisica: 8, tecnologia: 9 },
                 '2024': {}
             },
-            pending_subjects: [],
-            equivalencies: [],
+            pending_subjects: [
+                { materia: 'Matemática', anio: '2024', tipo: 'adeudada' }
+            ],
+            equivalencies: [
+                { materia: 'Inglés', anio: '2022', escuela_origen: 'Instituto Británico Norte' },
+                { materia: 'Música', anio: '2023', escuela_origen: 'Escuela de Arte Municipal' }
+            ],
             documents: []
         },
         {

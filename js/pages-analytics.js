@@ -464,6 +464,10 @@ function pendingSubjectRow(ps, idx) {
   return `<div class="flex gap-3 items-center mb-4" id="pending-row-${idx}">
     <input type="text" class="form-input" placeholder="Materia" value="${escapeHtml(ps.materia || '')}" style="flex:2" data-ps-field="materia" data-ps-idx="${idx}" oninput="updatePendingSubject(this)">
     <input type="text" class="form-input" placeholder="Año" value="${escapeHtml(ps.anio || '')}" style="flex:1" data-ps-field="anio" data-ps-idx="${idx}" oninput="updatePendingSubject(this)">
+    <select class="form-select" style="flex:1.5" data-ps-field="tipo" data-ps-idx="${idx}" onchange="updatePendingSubject(this)">
+      <option value="adeudada" ${(ps.tipo || 'adeudada') === 'adeudada' ? 'selected' : ''}>Adeudada</option>
+      <option value="libre" ${ps.tipo === 'libre' ? 'selected' : ''}>Libre</option>
+    </select>
     <button class="icon-btn danger" onclick="removePendingSubject(${idx})"><i data-lucide="trash-2"></i></button>
   </div>`;
 }
