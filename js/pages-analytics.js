@@ -10,25 +10,25 @@
 // ============================================================
 
 function renderAnalyticsListPage() {
-    const user = Auth.getCurrentUser();
-    const canCreate = Auth.canEditAnalytic();
-    const analytics = AnalyticRepository.getAll();
+  const user = Auth.getCurrentUser();
+  const canCreate = Auth.canEditAnalytic();
+  const analytics = AnalyticRepository.getAll();
 
-    const statusOptions = ['all', 'borrador', 'en_revision', 'devuelto', 'aprobado', 'enviado'];
-    const optionsHtml = statusOptions.map(s =>
-        `<option value="${s}">${s === 'all' ? 'Todos los estados' : escapeHtml(STATUS_LABELS[s])}</option>`
-    ).join('');
+  const statusOptions = ['all', 'borrador', 'en_revision', 'devuelto', 'aprobado', 'enviado'];
+  const optionsHtml = statusOptions.map(s =>
+    `<option value="${s}">${s === 'all' ? 'Todos los estados' : escapeHtml(STATUS_LABELS[s])}</option>`
+  ).join('');
 
-    const tableRows = analytics.length ? analytics.map(analytic => {
-        const student = getStudentById(analytic.student_id);
-        const creator = getUserById(analytic.created_by);
-        const name = student ? student.full_name : '—';
-        const dni = student ? student.dni : '—';
-        const curso = student ? student.curso : '—';
-        const years = Object.keys(analytic.grades || {}).sort();
-        const yearStr = years.join(', ') || '—';
+  const tableRows = analytics.length ? analytics.map(analytic => {
+    const student = getStudentById(analytic.student_id);
+    const creator = getUserById(analytic.created_by);
+    const name = student ? student.full_name : '—';
+    const dni = student ? student.dni : '—';
+    const curso = student ? student.curso : '—';
+    const years = Object.keys(analytic.grades || {}).sort();
+    const yearStr = years.join(', ') || '—';
 
-        return `
+    return `
       <tr>
         <td>
           <div class="table-name">${escapeHtml(name)}</div>
@@ -51,12 +51,12 @@ function renderAnalyticsListPage() {
           </div>
         </td>
       </tr>`;
-    }).join('') : `
+  }).join('') : `
     <tr><td colspan="7">
       ${renderEmptyState('file-text', 'Sin analíticos', 'No hay analíticos que coincidan con los filtros.', canCreate ? `<button class="btn btn-primary" onclick="Router.navigate('analiticos/nuevo')"><i data-lucide="plus"></i> Crear analítico</button>` : '')}
     </td></tr>`;
 
-    return `
+  return `
     <div class="page-header">
       <div class="page-header-left">
         <div class="page-title">Analíticos</div>
@@ -112,18 +112,18 @@ function renderAnalyticsListPage() {
 // ============================================================
 
 function renderAnalyticsDetailPage(analyticId) {
-    const analytic = AnalyticRepository.getById(analyticId);
-    if (!analytic) {
-        return renderNotFoundPage();
-    }
+  const analytic = AnalyticRepository.getById(analyticId);
+  if (!analytic) {
+    return renderNotFoundPage();
+  }
 
-    const student = getStudentById(analytic.student_id);
-    const user = Auth.getCurrentUser();
-    const canEdit = Auth.canEditAnalytic() &&
-        ['borrador', 'devuelto'].includes(analytic.status);
+  const student = getStudentById(analytic.student_id);
+  const user = Auth.getCurrentUser();
+  const canEdit = Auth.canEditAnalytic() &&
+    ['borrador', 'devuelto'].includes(analytic.status);
 
-    const docsList = (analytic.documents || []).length
-        ? analytic.documents.map(doc => `
+  const docsList = (analytic.documents || []).length
+    ? analytic.documents.map(doc => `
         <div class="activity-item">
           <div style="color:var(--color-blue)"><i data-lucide="file" style="width:20px;height:20px"></i></div>
           <div class="activity-content">
@@ -131,22 +131,30 @@ function renderAnalyticsDetailPage(analyticId) {
             <div class="activity-meta">Archivo adjunto</div>
           </div>
         </div>`).join('')
-        : `<div style="color:var(--text-muted);font-size:13px;padding:12px 0">Sin documentos adjuntos.</div>`;
+    : `<div style="color:var(--text-muted);font-size:13px;padding:12px 0">Sin documentos adjuntos.</div>`;
 
-    const pendingList = (analytic.pending_subjects || []).length
-        ? analytic.pending_subjects.map(ps => `
+  const pendingList = (analytic.pending_subjects || []).length
+    ? analytic.pending_subjects.map(ps => `
         <div style="display:flex;align-items:center;gap:8px;padding:8px;background:var(--bg-surface-2);border-radius:var(--r-sm);margin-bottom:6px">
           <i data-lucide="alert-circle" style="width:14px;height:14px;color:var(--color-amber);flex-shrink:0"></i>
           <span style="font-size:13px">${escapeHtml(ps.materia)} (${escapeHtml(ps.anio)}) — ${escapeHtml(ps.tipo)}</span>
         </div>`).join('')
-        : `<div style="color:var(--text-muted);font-size:13px;padding:6px 0">Sin materias adeudadas registradas.</div>`;
+    : `<div style="color:var(--text-muted);font-size:13px;padding:6px 0">Sin materias adeudadas registradas.</div>`;
 
-    // Devuelto banner
-    const lastReturn = MOCK_DB.history.filter(h =>
-        h.analytic_id === analyticId && h.new_status === STATUS.DEVUELTO
-    ).sort((a, b) => new Date(b.created_at) - new Date(a.created_at))[0];
+  const equivalenciesList = (analytic.equivalencies || []).length
+    ? analytic.equivalencies.map(eq => `
+        <div style="display:flex;align-items:center;gap:8px;padding:8px;background:var(--bg-surface-2);border-radius:var(--r-sm);margin-bottom:6px">
+          <i data-lucide="arrow-left-right" style="width:14px;height:14px;color:var(--color-blue);flex-shrink:0"></i>
+          <span style="font-size:13px">${escapeHtml(eq.materia)} (${escapeHtml(eq.anio)}) — Esc. Origen: ${escapeHtml(eq.escuela_origen)}</span>
+        </div>`).join('')
+    : `<div style="color:var(--text-muted);font-size:13px;padding:6px 0">Sin equivalencias registradas.</div>`;
 
-    const returnBanner = lastReturn ? `
+  // Devuelto banner
+  const lastReturn = MOCK_DB.history.filter(h =>
+    h.analytic_id === analyticId && h.new_status === STATUS.DEVUELTO
+  ).sort((a, b) => new Date(b.created_at) - new Date(a.created_at))[0];
+
+  const returnBanner = lastReturn ? `
     <div class="banner banner-warning" style="margin-bottom:24px">
       <i data-lucide="rotate-ccw"></i>
       <div>
@@ -154,7 +162,7 @@ function renderAnalyticsDetailPage(analyticId) {
       </div>
     </div>` : '';
 
-    const leftColumn = `
+  const leftColumn = `
     <div>
       ${returnBanner}
       <div class="card" style="margin-bottom:24px">
@@ -199,9 +207,16 @@ function renderAnalyticsDetailPage(analyticId) {
 
       <div class="card" style="margin-bottom:24px">
         <div class="card-header">
-          <span class="card-title"><i data-lucide="alert-triangle" style="display:inline;vertical-align:middle;margin-right:8px;width:17px;height:17px"></i>Materias adeudadas y equivalencias</span>
+          <span class="card-title"><i data-lucide="alert-triangle" style="display:inline;vertical-align:middle;margin-right:8px;width:17px;height:17px"></i>Materias adeudadas</span>
         </div>
         <div class="card-body">${pendingList}</div>
+      </div>
+
+      <div class="card" style="margin-bottom:24px">
+        <div class="card-header">
+          <span class="card-title"><i data-lucide="arrow-left-right" style="display:inline;vertical-align:middle;margin-right:8px;width:17px;height:17px"></i>Equivalencias</span>
+        </div>
+        <div class="card-body">${equivalenciesList}</div>
       </div>
 
       <div class="card">
@@ -213,7 +228,7 @@ function renderAnalyticsDetailPage(analyticId) {
       </div>
     </div>`;
 
-    return `
+  return `
     <div class="page-header">
       <div class="page-header-left">
         <div class="breadcrumb">
@@ -240,37 +255,39 @@ function renderAnalyticsDetailPage(analyticId) {
 // ============================================================
 
 let _wizardData = {
-    step: 1,
-    student: null,
-    grades: {},
-    pending_subjects: [],
-    documents: []
+  step: 1,
+  student: null,
+  grades: {},
+  pending_subjects: [],
+  equivalencies: [],
+  documents: []
 };
 
 function renderAnalyticsNewPage() {
-    if (!Auth.canEditAnalytic()) {
-        return renderForbiddenPage();
-    }
+  if (!Auth.canEditAnalytic()) {
+    return renderForbiddenPage();
+  }
 
-    _wizardData = { step: 1, student: null, grades: {}, pending_subjects: [], documents: [] };
-    return renderWizardStep(1);
+  _wizardData = { step: 1, student: null, grades: {}, pending_subjects: [], equivalencies: [], documents: [] };
+  return renderWizardStep(1);
 }
 
 function renderWizardStep(step) {
-    const steps = [
-        { num: 1, label: 'Alumno' },
-        { num: 2, label: 'Datos personales' },
-        { num: 3, label: 'Calificaciones' },
-        { num: 4, label: 'Adeudadas' },
-        { num: 5, label: 'Documentación' },
-        { num: 6, label: 'Revisión y envío' }
-    ];
+  const steps = [
+    { num: 1, label: 'Alumno' },
+    { num: 2, label: 'Datos personales' },
+    { num: 3, label: 'Calificaciones' },
+    { num: 4, label: 'Adeudadas' },
+    { num: 5, label: 'Equivalencias' },
+    { num: 6, label: 'Documentación' },
+    { num: 7, label: 'Revisión y envío' }
+  ];
 
-    const stepperHtml = steps.map((s, idx) => {
-        const isDone = s.num < step;
-        const isActive = s.num === step;
-        const isLast = idx === steps.length - 1;
-        return `
+  const stepperHtml = steps.map((s, idx) => {
+    const isDone = s.num < step;
+    const isActive = s.num === step;
+    const isLast = idx === steps.length - 1;
+    return `
       <div class="wizard-step ${isActive ? 'active' : ''} ${isDone ? 'done' : ''}" onclick="${s.num < step ? 'goToWizardStep(' + s.num + ')' : ''}">
         <div class="wizard-step-num">
           ${isDone ? '<i data-lucide="check" style="width:14px;height:14px"></i>' : s.num}
@@ -278,17 +295,17 @@ function renderWizardStep(step) {
         <div class="wizard-step-label">${s.label}</div>
       </div>
       ${!isLast ? `<div class="wizard-sep ${isDone ? 'done' : ''}"></div>` : ''}`;
-    }).join('');
+  }).join('');
 
-    const stepContent = getWizardStepContent(step);
-    const prevBtn = step > 1
-        ? `<button class="btn btn-secondary" onclick="goToWizardStep(${step - 1})"><i data-lucide="arrow-left"></i> Anterior</button>`
-        : `<button class="btn btn-ghost" onclick="Router.navigate('analiticos')">Cancelar</button>`;
-    const nextBtn = step < 6
-        ? `<button class="btn btn-primary" onclick="advanceWizard(${step})" id="wizard-next-btn">Siguiente <i data-lucide="arrow-right"></i></button>`
-        : `<button class="btn btn-success" onclick="submitNewAnalytic()" id="wizard-submit-btn"><i data-lucide="send"></i> Crear analítico</button>`;
+  const stepContent = getWizardStepContent(step);
+  const prevBtn = step > 1
+    ? `<button class="btn btn-secondary" onclick="goToWizardStep(${step - 1})"><i data-lucide="arrow-left"></i> Anterior</button>`
+    : `<button class="btn btn-ghost" onclick="Router.navigate('analiticos')">Cancelar</button>`;
+  const nextBtn = step < 7
+    ? `<button class="btn btn-primary" onclick="advanceWizard(${step})" id="wizard-next-btn">Siguiente <i data-lucide="arrow-right"></i></button>`
+    : `<button class="btn btn-success" onclick="submitNewAnalytic()" id="wizard-submit-btn"><i data-lucide="send"></i> Crear analítico</button>`;
 
-    return `
+  return `
     <div class="page-header">
       <div class="page-header-left">
         <div class="breadcrumb">
@@ -297,7 +314,7 @@ function renderWizardStep(step) {
           <span>Nuevo analítico</span>
         </div>
         <div class="page-title">Nuevo Analítico</div>
-        <div class="page-subtitle">Paso ${step} de 6</div>
+        <div class="page-subtitle">Paso ${step} de 7</div>
       </div>
     </div>
 
@@ -317,21 +334,22 @@ function renderWizardStep(step) {
 }
 
 function getWizardStepContent(step) {
-    switch (step) {
-        case 1: return getWizardStep1();
-        case 2: return getWizardStep2();
-        case 3: return getWizardStep3();
-        case 4: return getWizardStep4();
-        case 5: return getWizardStep5();
-        case 6: return getWizardStep6();
-        default: return '';
-    }
+  switch (step) {
+    case 1: return getWizardStep1();
+    case 2: return getWizardStep2();
+    case 3: return getWizardStep3();
+    case 4: return getWizardStep4();
+    case 5: return getWizardStep5();
+    case 6: return getWizardStep6();
+    case 7: return getWizardStep7();
+    default: return '';
+  }
 }
 
 function getWizardStep1() {
-    const studentRows = MOCK_DB.students
-        .filter(s => !MOCK_DB.analytics.some(a => a.student_id === s.id && a.status !== STATUS.ENVIADO))
-        .map(s => `
+  const studentRows = MOCK_DB.students
+    .filter(s => !MOCK_DB.analytics.some(a => a.student_id === s.id && a.status !== STATUS.ENVIADO))
+    .map(s => `
       <div class="activity-item" style="cursor:pointer;border-radius:var(--r-md);padding:12px 16px;border:1px solid var(--border);margin-bottom:8px"
            id="stu-opt-${s.id}"
            onclick="selectWizardStudent('${s.id}')">
@@ -343,7 +361,7 @@ function getWizardStep1() {
         <div id="stu-check-${s.id}" style="display:none;color:var(--color-green)"><i data-lucide="check-circle"></i></div>
       </div>`).join('');
 
-    return `
+  return `
     <div style="max-width:600px">
       <h3 style="font-size:17px;font-weight:700;margin-bottom:4px">Seleccioná el alumno</h3>
       <p style="color:var(--text-secondary);font-size:13px;margin-bottom:20px">Buscá al alumno por nombre o DNI. Solo se muestran alumnos sin analítico activo.</p>
@@ -363,9 +381,9 @@ function getWizardStep1() {
 }
 
 function getWizardStep2() {
-    const s = _wizardData.student;
-    if (!s) return '<div class="banner banner-error"><i data-lucide="alert-circle"></i> No se seleccionó ningún alumno. Volvé al paso 1.</div>';
-    return `
+  const s = _wizardData.student;
+  if (!s) return '<div class="banner banner-error"><i data-lucide="alert-circle"></i> No se seleccionó ningún alumno. Volvé al paso 1.</div>';
+  return `
     <div style="max-width:600px">
       <h3 style="font-size:17px;font-weight:700;margin-bottom:4px">Verificación de datos personales</h3>
       <p style="color:var(--text-secondary);font-size:13px;margin-bottom:24px">Confirmá que los datos del alumno sean correctos antes de continuar.</p>
@@ -399,15 +417,15 @@ function getWizardStep2() {
 }
 
 function getWizardStep3() {
-    const s = _wizardData.student;
-    if (!s) return '';
-    const startYear = s.graduation_year - 2;
-    const years = [startYear, startYear + 1, startYear + 2].map(String);
-    if (!_wizardData.grades || !Object.keys(_wizardData.grades).length) {
-        _wizardData.grades = {};
-        years.forEach(y => { _wizardData.grades[y] = {}; });
-    }
-    return `
+  const s = _wizardData.student;
+  if (!s) return '';
+  const startYear = s.graduation_year - 2;
+  const years = [startYear, startYear + 1, startYear + 2].map(String);
+  if (!_wizardData.grades || !Object.keys(_wizardData.grades).length) {
+    _wizardData.grades = {};
+    years.forEach(y => { _wizardData.grades[y] = {}; });
+  }
+  return `
     <div>
       <h3 style="font-size:17px;font-weight:700;margin-bottom:4px">Calificaciones por año</h3>
       <p style="color:var(--text-secondary);font-size:13px;margin-bottom:8px">Ingresá las calificaciones de cada materia. Rango válido: 1 a 10.</p>
@@ -426,15 +444,15 @@ function getWizardStep3() {
 }
 
 function getWizardStep4() {
-    return `
+  return `
     <div style="max-width:600px">
-      <h3 style="font-size:17px;font-weight:700;margin-bottom:4px">Materias adeudadas y equivalencias</h3>
-      <p style="color:var(--text-secondary);font-size:13px;margin-bottom:24px">Registrá materias adeudadas o equivalencias según correspondencia.</p>
+      <h3 style="font-size:17px;font-weight:700;margin-bottom:4px">Materias adeudadas</h3>
+      <p style="color:var(--text-secondary);font-size:13px;margin-bottom:24px">Registrá materias adeudadas.</p>
       <div id="pending-subjects-list">
         ${_wizardData.pending_subjects.length
-            ? _wizardData.pending_subjects.map((ps, idx) => pendingSubjectRow(ps, idx)).join('')
-            : '<div style="color:var(--text-muted);font-size:13px;margin-bottom:16px">Sin materias adeudadas registradas.</div>'
-        }
+      ? _wizardData.pending_subjects.map((ps, idx) => pendingSubjectRow(ps, idx)).join('')
+      : '<div style="color:var(--text-muted);font-size:13px;margin-bottom:16px">Sin materias adeudadas registradas.</div>'
+    }
       </div>
       <button class="btn btn-secondary" onclick="addPendingSubject()">
         <i data-lucide="plus"></i> Agregar materia adeudada
@@ -443,19 +461,41 @@ function getWizardStep4() {
 }
 
 function pendingSubjectRow(ps, idx) {
-    return `<div class="flex gap-3 items-center mb-4" id="pending-row-${idx}">
-    <input type="text" class="form-input" placeholder="Materia" value="${escapeHtml(ps.materia || '')}" style="flex:2" data-ps-field="materia" data-ps-idx="${idx}">
-    <input type="text" class="form-input" placeholder="Año" value="${escapeHtml(ps.anio || '')}" style="flex:1" data-ps-field="anio" data-ps-idx="${idx}">
-    <select class="form-select" style="flex:1" data-ps-field="tipo" data-ps-idx="${idx}">
-      <option ${ps.tipo === 'adeudada' ? 'selected' : ''}>adeudada</option>
-      <option ${ps.tipo === 'equivalencia' ? 'selected' : ''}>equivalencia</option>
-    </select>
+  return `<div class="flex gap-3 items-center mb-4" id="pending-row-${idx}">
+    <input type="text" class="form-input" placeholder="Materia" value="${escapeHtml(ps.materia || '')}" style="flex:2" data-ps-field="materia" data-ps-idx="${idx}" oninput="updatePendingSubject(this)">
+    <input type="text" class="form-input" placeholder="Año" value="${escapeHtml(ps.anio || '')}" style="flex:1" data-ps-field="anio" data-ps-idx="${idx}" oninput="updatePendingSubject(this)">
     <button class="icon-btn danger" onclick="removePendingSubject(${idx})"><i data-lucide="trash-2"></i></button>
   </div>`;
 }
 
 function getWizardStep5() {
-    return `
+  return `
+    <div style="max-width:600px">
+      <h3 style="font-size:17px;font-weight:700;margin-bottom:4px">Equivalencias</h3>
+      <p style="color:var(--text-secondary);font-size:13px;margin-bottom:24px">Registrá asignaturas equivalentes aprobadas en otras escuelas.</p>
+      <div id="equivalencies-list">
+        ${_wizardData.equivalencies.length
+      ? _wizardData.equivalencies.map((eq, idx) => equivalencyRow(eq, idx)).join('')
+      : '<div style="color:var(--text-muted);font-size:13px;margin-bottom:16px">Sin equivalencias registradas.</div>'
+    }
+      </div>
+      <button class="btn btn-secondary" onclick="addEquivalency()">
+        <i data-lucide="plus"></i> Agregar equivalencia
+      </button>
+    </div>`;
+}
+
+function equivalencyRow(eq, idx) {
+  return `<div class="flex gap-3 items-center mb-4" id="eq-row-${idx}">
+    <input type="text" class="form-input" placeholder="Materia" value="${escapeHtml(eq.materia || '')}" style="flex:2" data-eq-field="materia" data-eq-idx="${idx}" oninput="updateEquivalency(this)">
+    <input type="text" class="form-input" placeholder="Escuela Origen" value="${escapeHtml(eq.escuela_origen || '')}" style="flex:2" data-eq-field="escuela_origen" data-eq-idx="${idx}" oninput="updateEquivalency(this)">
+    <input type="number" class="form-input" placeholder="Año" value="${escapeHtml(eq.anio || '')}" style="flex:1" data-eq-field="anio" data-eq-idx="${idx}" oninput="updateEquivalency(this)">
+    <button class="icon-btn danger" onclick="removeEquivalency(${idx})"><i data-lucide="trash-2"></i></button>
+  </div>`;
+}
+
+function getWizardStep6() {
+  return `
     <div style="max-width:600px">
       <h3 style="font-size:17px;font-weight:700;margin-bottom:4px">Documentación adjunta</h3>
       <p style="color:var(--text-secondary);font-size:13px;margin-bottom:24px">Adjuntá los documentos requeridos: legajo de identidad, constancia de egreso, actas de examen.</p>
@@ -476,12 +516,12 @@ function getWizardStep5() {
     </div>`;
 }
 
-function getWizardStep6() {
-    const s = _wizardData.student;
-    if (!s) return '';
-    const years = Object.keys(_wizardData.grades || {}).sort();
+function getWizardStep7() {
+  const s = _wizardData.student;
+  if (!s) return '';
+  const years = Object.keys(_wizardData.grades || {}).sort();
 
-    return `
+  return `
     <div>
       <h3 style="font-size:17px;font-weight:700;margin-bottom:4px">Revisión y envío</h3>
       <p style="color:var(--text-secondary);font-size:13px;margin-bottom:24px">Revisá el resumen del analítico antes de crear el borrador.</p>
@@ -498,13 +538,13 @@ function getWizardStep6() {
           <div class="card-header"><span class="card-title">Calificaciones</span></div>
           <div class="card-body">
             ${years.map(y => {
-        const avg = gradeAverage(_wizardData.grades[y]);
-        const count = Object.values(_wizardData.grades[y]).filter(v => v !== null && v !== '').length;
-        return `<div class="flex justify-between" style="padding:4px 0;border-bottom:1px solid var(--border);font-size:13px">
+    const avg = gradeAverage(_wizardData.grades[y]);
+    const count = Object.values(_wizardData.grades[y]).filter(v => v !== null && v !== '').length;
+    return `<div class="flex justify-between" style="padding:4px 0;border-bottom:1px solid var(--border);font-size:13px">
                 <span>${y}</span>
                 <span style="color:var(--text-muted)">${count} mat. · Prom. ${avg || '—'}</span>
               </div>`;
-    }).join('')}
+  }).join('')}
           </div>
         </div>
       </div>
@@ -513,16 +553,26 @@ function getWizardStep6() {
           <div class="card-header"><span class="card-title">Materias adeudadas</span></div>
           <div class="card-body">
             ${_wizardData.pending_subjects.length
-            ? _wizardData.pending_subjects.map(ps => `<div style="font-size:13px;padding:4px 0">${escapeHtml(ps.materia)} (${escapeHtml(ps.anio)})</div>`).join('')
-            : '<span style="font-size:13px;color:var(--text-muted)">Ninguna</span>'}
+      ? _wizardData.pending_subjects.map(ps => `<div style="font-size:13px;padding:4px 0">${escapeHtml(ps.materia)} (${escapeHtml(ps.anio)})</div>`).join('')
+      : '<span style="font-size:13px;color:var(--text-muted)">Ninguna</span>'}
           </div>
         </div>
+        <div class="card">
+          <div class="card-header"><span class="card-title">Equivalencias</span></div>
+          <div class="card-body">
+            ${_wizardData.equivalencies.length
+      ? _wizardData.equivalencies.map(eq => `<div style="font-size:13px;padding:4px 0">${escapeHtml(eq.materia)} (${escapeHtml(eq.anio)}) - ${escapeHtml(eq.escuela_origen)}</div>`).join('')
+      : '<span style="font-size:13px;color:var(--text-muted)">Ninguna</span>'}
+          </div>
+        </div>
+      </div>
+      <div class="grid-2">
         <div class="card">
           <div class="card-header"><span class="card-title">Documentación</span></div>
           <div class="card-body">
             ${_wizardData.documents.length
-            ? _wizardData.documents.map(d => `<div style="font-size:13px;padding:4px 0">${escapeHtml(d)}</div>`).join('')
-            : '<span style="font-size:13px;color:var(--text-muted)">Sin documentos adjuntos</span>'}
+      ? _wizardData.documents.map(d => `<div style="font-size:13px;padding:4px 0">${escapeHtml(d)}</div>`).join('')
+      : '<span style="font-size:13px;color:var(--text-muted)">Sin documentos adjuntos</span>'}
           </div>
         </div>
       </div>

@@ -420,6 +420,32 @@ function removePendingSubject(idx) {
     goToWizardStep(4);
 }
 
+function addEquivalency() {
+    _wizardData.equivalencies.push({ materia: '', escuela_origen: '', anio: '' });
+    goToWizardStep(5);
+}
+
+function removeEquivalency(idx) {
+    _wizardData.equivalencies.splice(idx, 1);
+    goToWizardStep(5);
+}
+
+function updatePendingSubject(input) {
+    const idx = input.dataset.psIdx;
+    const field = input.dataset.psField;
+    if (_wizardData.pending_subjects[idx]) {
+        _wizardData.pending_subjects[idx][field] = input.value;
+    }
+}
+
+function updateEquivalency(input) {
+    const idx = input.dataset.eqIdx;
+    const field = input.dataset.eqField;
+    if (_wizardData.equivalencies[idx]) {
+        _wizardData.equivalencies[idx][field] = input.value;
+    }
+}
+
 function simulateFileUpload() {
     const fakeFile = 'documento_' + Date.now() + '.pdf';
     _wizardData.documents.push(fakeFile);
@@ -438,7 +464,7 @@ function simulateFileUpload() {
 
 function removeDoc(idx) {
     _wizardData.documents.splice(idx, 1);
-    goToWizardStep(5);
+    goToWizardStep(6);
 }
 
 function submitNewAnalytic() {
@@ -450,6 +476,7 @@ function submitNewAnalytic() {
         student_id: _wizardData.student.id,
         grades: _wizardData.grades,
         pending_subjects: _wizardData.pending_subjects,
+        equivalencies: _wizardData.equivalencies,
         documents: _wizardData.documents
     });
     if (result.success) {

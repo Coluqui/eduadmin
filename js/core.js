@@ -129,6 +129,7 @@ const MOCK_DB = {
                 '2024': { matematica: 9, lengua: 9, historia: 9, fisica: 9, quimica: 8, ingles: 10, ed_fisica: 9, tecnologia: 10 }
             },
             pending_subjects: [],
+            equivalencies: [],
             documents: ['legajo_identidad.pdf', 'constancia_egreso.pdf']
         },
         {
@@ -141,6 +142,7 @@ const MOCK_DB = {
                 '2024': { matematica: 8, lengua: 8, historia: 8, fisica: 8, quimica: 7, ingles: 9, ed_fisica: 9, tecnologia: 8 }
             },
             pending_subjects: [],
+            equivalencies: [],
             documents: ['legajo_identidad.pdf']
         },
         {
@@ -153,6 +155,7 @@ const MOCK_DB = {
                 '2024': { matematica: 7, lengua: 7, historia: 8, fisica: 7, quimica: 7, ingles: 8, ed_fisica: 8, tecnologia: 7 }
             },
             pending_subjects: [{ materia: 'Física', anio: '2022', tipo: 'adeudada' }],
+            equivalencies: [],
             documents: ['legajo_identidad.pdf']
         },
         {
@@ -165,6 +168,7 @@ const MOCK_DB = {
                 '2024': {}
             },
             pending_subjects: [],
+            equivalencies: [],
             documents: []
         },
         {
@@ -177,6 +181,7 @@ const MOCK_DB = {
                 '2024': { matematica: 9, lengua: 10, historia: 9, fisica: 9, quimica: 10, ingles: 10, ed_fisica: 10, tecnologia: 10 }
             },
             pending_subjects: [],
+            equivalencies: [],
             documents: ['legajo_identidad.pdf', 'constancia_egreso.pdf', 'acta_examen.pdf']
         },
         {
@@ -189,6 +194,7 @@ const MOCK_DB = {
                 '2023': { matematica: 8, lengua: 8, historia: 8, fisica: 8, quimica: 8, ingles: 9, ed_fisica: 9, tecnologia: 9 }
             },
             pending_subjects: [],
+            equivalencies: [],
             documents: ['legajo_identidad.pdf', 'constancia_egreso.pdf']
         },
         {
@@ -201,6 +207,7 @@ const MOCK_DB = {
                 '2024': {}
             },
             pending_subjects: [],
+            equivalencies: [],
             documents: []
         }
     ],
@@ -493,6 +500,7 @@ const AnalyticRepository = {
             updated_at: new Date().toISOString(),
             grades: data.grades || {},
             pending_subjects: data.pending_subjects || [],
+            equivalencies: data.equivalencies || [],
             documents: data.documents || []
         };
         MOCK_DB.analytics.push(newAnalytic);
