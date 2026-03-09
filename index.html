@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="es" data-theme="light">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>EduAdmin — Gestión de Analíticos</title>
+  <meta name="description"
+    content="Plataforma de gestión de analíticos educativos para instituciones de nivel secundario en Argentina.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700;800&display=swap"
+    rel="stylesheet">
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+
+<body>
+  <div id="app">
+    <div class="initial-loader">
+      <div class="loader-logo">
+        <svg width="40" height="40" viewBox="0 0 40 40" fill="none">
+          <rect width="40" height="40" rx="10" fill="#2563EB" />
+          <path d="M10 28L20 12L30 28H10Z" fill="white" fill-opacity="0.9" />
+          <rect x="14" y="22" width="12" height="3" rx="1.5" fill="white" />
+        </svg>
+      </div>
+      <div class="loader-spinner"></div>
+    </div>
+  </div>
+  <script src="https://cdn.jsdelivr.net/npm/lucide@0.344.0/dist/umd/lucide.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="js/supabase-config.js"></script>
+  <script src="js/core.js"></script>
+  <script src="js/components.js"></script>
+  <script src="js/layout.js"></script>
+  <script src="js/pages-login.js"></script>
+  <script src="js/pages-dashboard.js"></script>
+  <script src="js/pages-analytics.js"></script>
+  <script src="js/pages-users.js"></script>
+  <script src="js/pages-students.js"></script>
+  <script src="js/pages-settings.js"></script>
+  <script src="js/router.js"></script>
+  <script src="js/app.js"></script>
+</body>
+
+</html>
