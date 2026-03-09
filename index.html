@@ -30,6 +30,13 @@
   </div>
   <script src="https://cdn.jsdelivr.net/npm/lucide@0.344.0/dist/umd/lucide.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script>
+    // Injected by Vite during Vercel build
+    window.ENV = {
+      SUPABASE_URL: "%VITE_SUPABASE_URL%",
+      SUPABASE_ANON_KEY: "%VITE_SUPABASE_ANON_KEY%"
+    };
+  </script>
   <script src="js/supabase-config.js"></script>
   <script src="js/core.js"></script>
   <script src="js/components.js"></script>
