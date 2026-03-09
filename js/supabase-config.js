@@ -11,8 +11,7 @@
  */
 const SUPABASE_URL = (window.ENV && window.ENV.SUPABASE_URL && window.ENV.SUPABASE_URL !== '%VITE_SUPABASE_URL%')
     ? window.ENV.SUPABASE_URL
-    : 'https://TU_PROYECTO.supabase.co';
-
+    : 'https://apswmoescwxoleaprbuk.supabase.co';
 const SUPABASE_ACCESS_TOKEN = (window.ENV && window.ENV.SUPABASE_ANON_KEY && window.ENV.SUPABASE_ANON_KEY !== '%VITE_SUPABASE_ANON_KEY%')
     ? window.ENV.SUPABASE_ANON_KEY
     : 'TU_ACCES_TOKEN_AQUI';
